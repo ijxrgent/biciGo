@@ -8,8 +8,10 @@ import { Rate } from "./business/Rate.js";
 import { Rental } from "./business/Rental.js";
 import { RentalDetails } from "./business/RentalDetails.js";
 import { Maintenance } from "./business/Maintenance.js";
-import { PenaltyType } from "./business/PenaltyTypes.js";
+import { PenaltyType } from "./business/PenaltyType.js";
 import { Penalty } from "./business/Penalty.js";
+import { Sale } from "./business/Sale.js";
+import { SaleDetails } from "./business/SaleDetails.js";
 
 /*
 |--------------------------------------------------------------------------
@@ -40,7 +42,7 @@ BikeCategory.hasMany(Bike, {
 
 Bike.belongsTo(BikeCategory, {
   foreignKey: "bike_category_id",
-  as: "category",
+  as: "bikeCategory",
 });
 
 /*
@@ -155,6 +157,36 @@ Penalty.belongsTo(PenaltyType, {
   as: "penalty_type",
 });
 
+User.hasMany(Sale, {
+  foreignKey: "user_id",
+  as: "sales",
+});
+
+Sale.belongsTo(User, {
+  foreignKey: "user_id",
+  as: "user",
+});
+
+Sale.hasMany(SaleDetails, {
+  foreignKey: "sale_id",
+  as: "details",
+});
+
+SaleDetails.belongsTo(Sale, {
+  foreignKey: "sale_id",
+  as: "sale",
+});
+
+Bike.hasMany(SaleDetails, {
+  foreignKey: "bike_id",
+  as: "sale_details",
+});
+
+SaleDetails.belongsTo(Bike, {
+  foreignKey: "bike_id",
+  as: "bike",
+});
+
 /*
 |--------------------------------------------------------------------------
 | Exports
@@ -172,4 +204,6 @@ export {
   Maintenance,
   PenaltyType,
   Penalty,
+  Sale,
+  SaleDetails,
 };

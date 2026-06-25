@@ -1,6 +1,6 @@
 // src/controllers/business/penaltyType.controller.ts
 import { Request, Response } from "express";
-import { PenaltyType, PenaltyTypeI } from "../../models/business/PenaltyTypes.js";
+import { PenaltyType, PenaltyTypeI } from "../../models/business/PenaltyType.js";
 
 export class PenaltyTypeController {
   // GET ALL (solo activos)

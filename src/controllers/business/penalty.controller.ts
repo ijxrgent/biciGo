@@ -2,7 +2,7 @@
 import { Request, Response } from "express";
 import { Penalty, PenaltyI } from "../../models/business/Penalty.js";
 import { Rental } from "../../models/business/Rental.js";
-import { PenaltyType } from "../../models/business/PenaltyTypes.js";
+import { PenaltyType } from "../../models/business/PenaltyType.js";
 
 export class PenaltyController {
   // GET ALL (solo pendientes)
