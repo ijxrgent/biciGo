@@ -1,12 +1,15 @@
 // src/routes/index.ts
 import { Router } from "express";
-import userRoutes from "../routes/business/user.route.js";
-import brand from "../routes/business/brand.route.js"
-import bikeCategory from "../routes/business/bikeCategory.route.js"
-import bike from "../routes/business/bike.route.js"
-import rate from "../routes/business/rate.route.js"
-import rental from "../routes/business/rental.route.js"
-import rentalDetails from "../routes/business/rentalDetails.route.js"
+import userRoutes from "./business/user.routes.js";
+import brand from "./business/brand.routes.js"
+import bikeCategory from "./business/bikeCategory.routes.js"
+import bike from "./business/bike.routes.js"
+import rate from "./business/rate.routes.js"
+import rental from "./business/rental.routes.js"
+import rentalDetails from "./business/rentalDetails.routes.js"
+import maintenance from "./business/maintenance.routes.js"
+import penaltyTypes from "./business/penaltyTypes.routes.js"
+import penalty from "./business/penalty.routes.js"
 
 const router = Router();
 
@@ -17,5 +20,8 @@ router.use("/bikes", bike);
 router.use("/rates", rate);
 router.use("/rentals", rental);
 router.use("/rental-details", rentalDetails);
+router.use("/maintenances", maintenance);
+router.use("/penalty-types", penaltyTypes);
+router.use("/penalties", penalty);
 
 export default router;
