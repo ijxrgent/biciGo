@@ -93,6 +93,7 @@ export class BikeController {
     const {
       serial_number,
       model,
+      imageURL,
       description,
       price,
       status,
@@ -127,6 +128,7 @@ export class BikeController {
       let body: BikeI = {
         serial_number,
         model,
+        imageURL,
         description,
         price,
         status: status || "available",
@@ -165,6 +167,7 @@ export class BikeController {
     const {
       serial_number,
       model,
+      imageURL,
       description,
       price,
       status,
@@ -216,6 +219,7 @@ export class BikeController {
       let body: Partial<BikeI> = {
         serial_number,
         model,
+        imageURL,
         description,
         price,
         status,

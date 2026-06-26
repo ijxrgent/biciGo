@@ -8,6 +8,7 @@ export interface BikeI {
   id?: number;
   serial_number: string;
   model: string;
+  imageURL?: string;
   description?: string;
   price: number;
   status: "available" | "rented" | "maintenance" | "unavailable" | "sold";
@@ -19,6 +20,7 @@ export class Bike extends Model {
   public id!: number;
   public serial_number!: string;
   public model!: string;
+  public imageURL!: string;
   public description!: string;
   public price!: number;
   public status!: "available" | "rented" | "maintenance" | "unavailable" | "sold";
@@ -49,6 +51,12 @@ Bike.init(
           args: [2, 100],
           msg: "Model must be between 2 and 100 characters",
         },
+      },
+    },
+    imageURL: {
+      type: DataTypes.STRING,
+      validate: {
+        isUrl: { msg: "Image URL must be a valid URL" },
       },
     },
     description: {

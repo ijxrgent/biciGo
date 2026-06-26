@@ -1,7 +1,11 @@
+//src/config/index.ts
 import dotenv from "dotenv";
-import express, { type Application } from "express";
+import express, { Application } from "express";
 import morgan from "morgan";
 import cors from "cors";
+
+import "../models/index.js";
+import { sequelize, testConnection } from "../database/db.js";
 
 dotenv.config();
 
@@ -32,14 +36,30 @@ export class App {
   }
 
   private async dbConnection(): Promise<void> {
-    // Conexion, configuracion y sincronizar BD
+    try {
+      // Mostrar información de la base de datos seleccionada
+      // const dbInfo = getDatabaseInfo();
+      // console.log(`🔗 Intentando conectar a: ${dbInfo.engine.toUpperCase()}`);
+
+      // Probar la conexión
+      const isConnected = await testConnection();
+
+      if (!isConnected) {
+        throw new Error(`No se pudo conectar a la base de datos`);
+      }
+
+      // Sincronizar la base de datos
+      await sequelize.sync({ force: false });
+      console.log(`📦 Base de datos sincronizada exitosamente`);
+
+    } catch (error) {
+      console.error("❌ Error al conectar con la base de datos:", error);
+      process.exit(1); // Terminar la aplicación si no se puede conectar
+    }
   }
 
-  listen() {
-  this.app.listen(this.app.get('port'), () => {
-    console.log(
-      `🚀 Servidor ejecutándose en puerto ${this.app.get('port')}`
-    );
-  });
-}
+  async listen() {
+    await this.app.listen(this.app.get('port'));
+    console.log(`🚀 Servidor ejecutándose en puerto ${this.app.get('port')}`);
+  }
 }
