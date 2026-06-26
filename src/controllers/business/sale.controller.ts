@@ -127,7 +127,7 @@ export class SaleController {
         return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      const result = await saleService.deleteSale(id);
+      const result = await saleService.delete(id);
 
       if (!result) {
         return res.status(404).json({ error: "Sale not found" });

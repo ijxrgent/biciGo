@@ -1,6 +1,9 @@
 // src/controllers/business/bike.controller.ts
 import { Request, Response } from "express";
 import { BikeService } from "../../services/bike.service.js";
+// ✅ Importar los modelos necesarios
+import { Brand } from "../../models/business/Brand.js";
+import { BikeCategory } from "../../models/business/BikeCategory.js";
 
 const bikeService = new BikeService();
 
@@ -19,7 +22,22 @@ export class BikeController {
   // Get all bikes (admin - incluye todas)
   public async getAllBikesAdmin(req: Request, res: Response) {
     try {
-      const bikes = await bikeService.getAllBikesAdmin();
+      // ✅ Usar findAll de BaseService con includes
+      const bikes = await bikeService.findAll({
+        include: [
+          {
+            model: Brand,
+            as: "brand",
+            attributes: ["id", "name"],
+          },
+          {
+            model: BikeCategory,
+            as: "category",
+            attributes: ["id", "name"],
+          },
+        ],
+        order: [["status", "ASC"], ["model", "ASC"]],
+      });
       res.status(200).json({ bikes });
     } catch (error) {
       console.error("Error fetching all bikes:", error);
@@ -42,6 +60,29 @@ export class BikeController {
         res.status(200).json(bike);
       } else {
         res.status(404).json({ error: "Bike not found or not available" });
+      }
+    } catch (error) {
+      console.error("Error fetching bike:", error);
+      res.status(500).json({ error: "Error fetching bike" });
+    }
+  }
+
+  // Get bike by ID (admin - incluye todas)
+  public async getBikeByIdAdmin(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+
+      // ✅ Usar findById de BaseService
+      const bike = await bikeService.findById(id);
+
+      if (bike) {
+        res.status(200).json(bike);
+      } else {
+        res.status(404).json({ error: "Bike not found" });
       }
     } catch (error) {
       console.error("Error fetching bike:", error);
@@ -97,6 +138,10 @@ export class BikeController {
         bike_category_id,
       } = req.body;
 
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+
       const bikeData = {
         serial_number,
         model,
@@ -107,10 +152,6 @@ export class BikeController {
         brand_id,
         bike_category_id,
       };
-
-      if (!id || typeof id !== 'string') {
-        return res.status(400).json({ error: "Invalid ID format" });
-      }
 
       const updatedBike = await bikeService.updateBike(id, bikeData);
 
@@ -125,7 +166,7 @@ export class BikeController {
     }
   }
 
-  // Delete bike (físico)
+  // Delete bike (físico) - ✅ Usar delete de BaseService
   public async deleteBike(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -134,7 +175,7 @@ export class BikeController {
         return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      const result = await bikeService.deleteBike(id);
+      const result = await bikeService.delete(id);
 
       if (result) {
         res.status(200).json({ message: "Bike deleted successfully" });

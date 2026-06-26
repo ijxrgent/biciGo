@@ -1,5 +1,6 @@
 // src/services/brand.service.ts
 import { Brand } from "../models/business/Brand.js";
+import { Bike } from "../models/index.js";
 import { BaseService } from "./base.service.js";
 import { CreationAttributes } from "@sequelize/core";
 import { Op } from "@sequelize/core";
@@ -18,6 +19,13 @@ export class BrandService extends BaseService<Brand> {
 
   public async getBrandById(id: string | number): Promise<Brand | null> {
     return await this.findById(id);
+  }
+
+   public async brandHasBikes(id: string | number): Promise<boolean> {
+    const count = await Bike.count({
+      where: { brand_id: id }
+    });
+    return count > 0;
   }
 
   // ✅ create recibe CreationAttributes<Brand>

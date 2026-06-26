@@ -110,7 +110,7 @@ export class MaintenanceController {
         return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      const result = await maintenanceService.deleteMaintenance(id);
+      const result = await maintenanceService.delete(id);
 
       if (!result) {
         return res.status(404).json({ error: "Maintenance not found" });

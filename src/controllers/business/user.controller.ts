@@ -19,13 +19,10 @@ export class UserController {
   // Get all users (incluyendo inactivos - admin)
   public async getAllUsersAdmin(req: Request, res: Response) {
     try {
-      const { id } = req.params;
-
-      if (!id || typeof id !== 'string') {
-        return res.status(400).json({ error: "Invalid ID format" });
-      }
-
-      const users = await userService.getAllUsersAdmin();
+      // ✅ Usar findAll de BaseService directamente
+      const users = await userService.findAll({
+        order: [["status", "DESC"], ["name", "ASC"]]
+      });
       res.status(200).json({ users });
     } catch (error) {
       console.error(error);
@@ -64,7 +61,8 @@ export class UserController {
         return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      const user = await userService.getUserByIdAdmin(id);
+      // ✅ Usar findById de BaseService
+      const user = await userService.findById(id);
 
       if (user) {
         res.status(200).json(user);
@@ -125,7 +123,7 @@ export class UserController {
     }
   }
 
-  // Delete user (físico)
+  // Delete user (físico) - ✅ Usar delete de BaseService
   public async deleteUser(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -134,7 +132,7 @@ export class UserController {
         return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      const result = await userService.deleteUser(id);
+      const result = await userService.delete(id);
 
       if (result) {
         res.status(200).json({ message: "User deleted successfully" });

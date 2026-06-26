@@ -19,7 +19,10 @@ export class BrandController {
   // Get all brands (incluyendo inactivos - admin)
   public async getAllBrandsAdmin(req: Request, res: Response) {
     try {
-      const brands = await brandService.getAllBrandsAdmin();
+      // ✅ Usar findAll de BaseService
+      const brands = await brandService.findAll({
+        order: [["status", "DESC"], ["name", "ASC"]]
+      });
       res.status(200).json({ brands });
     } catch (error) {
       console.error(error);
@@ -58,7 +61,8 @@ export class BrandController {
         return res.status(400).json({ error: "Invalid ID format" });
       }
       
-      const brand = await brandService.getBrandByIdAdmin(id);
+      // ✅ Usar findById de BaseService
+      const brand = await brandService.findById(id);
 
       if (brand) {
         res.status(200).json(brand);
@@ -130,7 +134,7 @@ export class BrandController {
     }
   }
 
-  // Delete brand (físico)
+  // Delete brand (físico) - ✅ Usar delete de BaseService
   public async deleteBrand(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -147,7 +151,7 @@ export class BrandController {
         });
       }
 
-      const result = await brandService.deleteBrand(id);
+      const result = await brandService.delete(id);
 
       if (result) {
         res.status(200).json({ message: "Brand deleted successfully" });

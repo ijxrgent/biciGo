@@ -127,7 +127,7 @@ export class PenaltyController {
         return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      const result = await penaltyService.deletePenalty(id);
+      const result = await penaltyService.delete(id);
 
       if (!result) {
         return res.status(404).json({ error: "Penalty not found" });

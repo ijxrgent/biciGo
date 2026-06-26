@@ -16,6 +16,20 @@ export class BikeCategoryController {
     }
   }
 
+  // Get all categories (incluyendo inactivas - admin)
+  public async getAllCategoriesAdmin(req: Request, res: Response) {
+    try {
+      // ✅ Usar findAll de BaseService
+      const categories = await bikeCategoryService.findAll({
+        order: [["status", "DESC"], ["name", "ASC"]]
+      });
+      res.status(200).json({ categories });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error fetching categories" });
+    }
+  }
+
   // Get category by ID
   public async getCategoryById(req: Request, res: Response) {
     try {
@@ -38,14 +52,47 @@ export class BikeCategoryController {
     }
   }
 
+  // Get category by ID (admin - incluye inactivas)
+  public async getCategoryByIdAdmin(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+      
+      // ✅ Usar findById de BaseService
+      const category = await bikeCategoryService.findById(id);
+
+      if (category) {
+        res.status(200).json(category);
+      } else {
+        res.status(404).json({ error: "Category not found" });
+      }
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error fetching category" });
+    }
+  }
+
   // Create category
   public async createCategory(req: Request, res: Response) {
     try {
       const { name, description, status } = req.body;
 
+      // Validar que el nombre no esté vacío
+      if (!name || typeof name !== 'string' || name.trim().length === 0) {
+        return res.status(400).json({ error: "Name is required" });
+      }
+
+      // Validar longitud mínima
+      if (name.trim().length < 3) {
+        return res.status(400).json({ error: "Name must be at least 3 characters" });
+      }
+
       const categoryData = {
-        name,
-        description,
+        name: name.trim(),
+        description: description?.trim(),
         status: status || "active",
       };
 
@@ -67,7 +114,21 @@ export class BikeCategoryController {
         return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      const categoryData = { name, description, status };
+      // Validar que el nombre no esté vacío si se envía
+      if (name !== undefined && (!name || typeof name !== 'string' || name.trim().length === 0)) {
+        return res.status(400).json({ error: "Name cannot be empty" });
+      }
+
+      // Validar longitud mínima si se envía
+      if (name !== undefined && name.trim().length < 3) {
+        return res.status(400).json({ error: "Name must be at least 3 characters" });
+      }
+
+      const categoryData = {
+        name: name?.trim(),
+        description: description?.trim(),
+        status,
+      };
 
       const updatedCategory = await bikeCategoryService.updateCategory(id, categoryData);
 
@@ -82,7 +143,7 @@ export class BikeCategoryController {
     }
   }
 
-  // Delete category (físico)
+  // Delete category (físico) - ✅ Usar delete de BaseService
   public async deleteCategory(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -91,7 +152,15 @@ export class BikeCategoryController {
         return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      const result = await bikeCategoryService.deleteCategory(id);
+      // Verificar si la categoría tiene bicicletas asociadas
+      const hasBikes = await bikeCategoryService.categoryHasBikes(id);
+      if (hasBikes) {
+        return res.status(400).json({ 
+          error: "Cannot delete category with associated bikes. Please reassign or delete the bikes first." 
+        });
+      }
+
+      const result = await bikeCategoryService.delete(id);
 
       if (result) {
         res.status(200).json({ message: "Category deleted successfully" });

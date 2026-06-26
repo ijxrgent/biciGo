@@ -82,7 +82,7 @@ export class RentalController {
         return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      const result = await rentalService.deleteRental(id);
+      const result = await rentalService.delete(id);
 
       if (!result) {
         return res.status(404).json({ error: "Rental not found" });

@@ -19,7 +19,8 @@ export class RateController {
   // GET ALL (admin - incluye inactivos)
   public async getAllRatesAdmin(req: Request, res: Response) {
     try {
-      const rates = await rateService.getAllRatesAdmin();
+      // ✅ Usar findAll de BaseService
+      const rates = await rateService.findAll();
       res.status(200).json({ rates });
     } catch (error: any) {
       console.error(error);
@@ -58,7 +59,8 @@ export class RateController {
         return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      const rate = await rateService.getRateByIdAdmin(id);
+      // ✅ Usar findById de BaseService
+      const rate = await rateService.findById(id);
 
       if (rate) {
         res.status(200).json(rate);
@@ -129,7 +131,7 @@ export class RateController {
     }
   }
 
-  // DELETE físico
+  // DELETE físico - ✅ Usar delete de BaseService
   public async deleteRate(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -138,7 +140,7 @@ export class RateController {
         return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      const result = await rateService.deleteRate(id);
+      const result = await rateService.delete(id);
 
       if (result) {
         res.status(200).json({ message: "Rate deleted successfully" });
