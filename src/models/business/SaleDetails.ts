@@ -1,4 +1,3 @@
-// src/models/business/SaleDetails.ts
 import { DataTypes, Model } from "@sequelize/core";
 import { sequelize } from "../../database/db.js";
 

@@ -5,13 +5,16 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "dev": "nodemon --exec tsx src/server.ts"
+    "dev": "nodemon --exec tsx src/server.ts",
+    "seed": "tsx src/faker/seed.ts",
+    "reset-db": "tsx src/faker/reset.ts"
   },
   "type": "module",
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@faker-js/faker": "^10.5.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
