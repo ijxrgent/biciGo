@@ -1,16 +1,14 @@
 // src/controllers/business/penaltyType.controller.ts
 import { Request, Response } from "express";
-import { PenaltyType, PenaltyTypeI } from "../../models/business/PenaltyType.js";
+import { PenaltyTypeService } from "../../services/penaltyTypes.service.js";
+
+const penaltyTypeService = new PenaltyTypeService();
 
 export class PenaltyTypeController {
   // GET ALL (solo activos)
   public async getAllPenaltyTypes(req: Request, res: Response) {
     try {
-      const penaltyTypes = await PenaltyType.findAll({
-        where: { status: "active" },
-        order: [["name", "ASC"]]
-      });
-
+      const penaltyTypes = await penaltyTypeService.getAllPenaltyTypes();
       res.status(200).json({ penaltyTypes });
     } catch (error) {
       console.error(error);
@@ -21,10 +19,7 @@ export class PenaltyTypeController {
   // GET ALL (incluyendo inactivos - admin)
   public async getAllPenaltyTypesAdmin(req: Request, res: Response) {
     try {
-      const penaltyTypes = await PenaltyType.findAll({
-        order: [["status", "DESC"], ["name", "ASC"]]
-      });
-
+      const penaltyTypes = await penaltyTypeService.getAllPenaltyTypesAdmin();
       res.status(200).json({ penaltyTypes });
     } catch (error) {
       console.error(error);
@@ -37,7 +32,11 @@ export class PenaltyTypeController {
     try {
       const { id } = req.params;
 
-      const penaltyType = await PenaltyType.findByPk(id);
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+
+      const penaltyType = await penaltyTypeService.getPenaltyTypeById(id);
 
       if (penaltyType) {
         res.status(200).json(penaltyType);
@@ -61,7 +60,7 @@ export class PenaltyTypeController {
         status,
       } = req.body;
 
-      let body: PenaltyTypeI = {
+      const penaltyTypeData = {
         name,
         default_amount,
         description,
@@ -69,8 +68,7 @@ export class PenaltyTypeController {
         status: status || "active",
       };
 
-      const newPenaltyType = await PenaltyType.create({ ...body });
-
+      const newPenaltyType = await penaltyTypeService.createPenaltyType(penaltyTypeData);
       res.status(201).json(newPenaltyType);
     } catch (error: any) {
       console.error(error);
@@ -83,10 +81,8 @@ export class PenaltyTypeController {
     try {
       const { id } = req.params;
 
-      const penaltyType = await PenaltyType.findByPk(id);
-
-      if (!penaltyType) {
-        return res.status(404).json({ error: "Penalty type not found" });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
       }
 
       const {
@@ -97,15 +93,21 @@ export class PenaltyTypeController {
         status,
       } = req.body;
 
-      await penaltyType.update({
+      const penaltyTypeData = {
         name,
         default_amount,
         description,
         penalty_mode,
         status,
-      });
+      };
 
-      res.status(200).json(penaltyType);
+      const updatedPenaltyType = await penaltyTypeService.updatePenaltyType(id, penaltyTypeData);
+
+      if (!updatedPenaltyType) {
+        return res.status(404).json({ error: "Penalty type not found" });
+      }
+
+      res.status(200).json(updatedPenaltyType);
     } catch (error: any) {
       console.error(error);
       res.status(400).json({ error: error.message });
@@ -117,13 +119,15 @@ export class PenaltyTypeController {
     try {
       const { id } = req.params;
 
-      const penaltyType = await PenaltyType.findByPk(id);
-
-      if (!penaltyType) {
-        return res.status(404).json({ error: "Penalty type not found" });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      await penaltyType.destroy();
+      const result = await penaltyTypeService.deletePenaltyType(id);
+
+      if (!result) {
+        return res.status(404).json({ error: "Penalty type not found" });
+      }
 
       res.status(200).json({ message: "Penalty type deleted successfully" });
     } catch (error) {
@@ -137,15 +141,15 @@ export class PenaltyTypeController {
     try {
       const { id } = req.params;
 
-      const penaltyType = await PenaltyType.findOne({
-        where: { id, status: "active" }
-      });
-
-      if (!penaltyType) {
-        return res.status(404).json({ error: "Penalty type not found or already inactive" });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      await penaltyType.update({ status: "inactive" });
+      const result = await penaltyTypeService.deletePenaltyTypeAdv(id);
+
+      if (!result) {
+        return res.status(404).json({ error: "Penalty type not found or already inactive" });
+      }
 
       res.status(200).json({ message: "Penalty type marked as inactive" });
     } catch (error) {
@@ -159,15 +163,15 @@ export class PenaltyTypeController {
     try {
       const { id } = req.params;
 
-      const penaltyType = await PenaltyType.findOne({
-        where: { id, status: "inactive" }
-      });
-
-      if (!penaltyType) {
-        return res.status(404).json({ error: "Penalty type not found or already active" });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      await penaltyType.update({ status: "active" });
+      const result = await penaltyTypeService.reactivatePenaltyType(id);
+
+      if (!result) {
+        return res.status(404).json({ error: "Penalty type not found or already active" });
+      }
 
       res.status(200).json({ message: "Penalty type reactivated successfully" });
     } catch (error) {

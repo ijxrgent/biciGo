@@ -15,10 +15,11 @@ router.post("/", bikeCategoryController.createCategory);
 // PUT
 router.put("/:id", bikeCategoryController.updateCategory);
 
+// PATCH - Cambios de estado
+router.patch("/:id/inactive", bikeCategoryController.deleteCategoryAdv);
+router.patch("/:id/active", bikeCategoryController.reactivateCategory);
+
 // DELETE (físico)
 router.delete("/:id", bikeCategoryController.deleteCategory);
-
-// DELETE lógico
-router.patch("/:id", bikeCategoryController.deleteCategoryAdv);
 
 export default router;

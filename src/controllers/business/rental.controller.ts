@@ -1,22 +1,14 @@
 // src/controllers/business/rental.controller.ts
 import { Request, Response } from "express";
-import { Rental, RentalI } from "../../models/business/Rental.js";
-import { User } from "../../models/business/User.js";
+import { RentalService } from "../../services/rental.service.js";
+
+const rentalService = new RentalService();
 
 export class RentalController {
   // GET ALL
   public async getAllRentals(req: Request, res: Response) {
     try {
-      const rentals = await Rental.findAll({
-        include: [
-          { 
-            model: User, 
-            as: "user",
-            attributes: ["id", "name", "email", "phone"]
-          }
-        ]
-      });
-
+      const rentals = await rentalService.getAllRentals();
       res.status(200).json({ rentals });
     } catch (error: any) {
       console.error(error);
@@ -29,15 +21,11 @@ export class RentalController {
     try {
       const { id } = req.params;
 
-      const rental = await Rental.findByPk(id, {
-        include: [
-          { 
-            model: User, 
-            as: "user",
-            attributes: ["id", "name", "email", "phone"]
-          }
-        ]
-      });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+      
+      const rental = await rentalService.getRentalById(id);
 
       if (!rental) {
         return res.status(404).json({ error: "Rental not found" });
@@ -53,28 +41,9 @@ export class RentalController {
   // CREATE
   public async createRental(req: Request, res: Response) {
     try {
-      const body: RentalI = req.body;
-
-      // Validar que el usuario existe
-      const userExists = await User.findByPk(body.user_id);
-      if (!userExists) {
-        return res.status(400).json({ error: "User not found" });
-      }
-
-      const rental = await Rental.create({ ...body });
-
-      // Obtener el rental creado con su relación
-      const createdRental = await Rental.findByPk(rental.id, {
-        include: [
-          { 
-            model: User, 
-            as: "user",
-            attributes: ["id", "name", "email", "phone"]
-          }
-        ]
-      });
-
-      res.status(201).json(createdRental);
+      const rentalData = req.body;
+      const newRental = await rentalService.createRental(rentalData);
+      res.status(201).json(newRental);
     } catch (error: any) {
       console.error(error);
       res.status(400).json({ error: error.message });
@@ -85,25 +54,17 @@ export class RentalController {
   public async updateRental(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      const rentalData = req.body;
 
-      const rental = await Rental.findByPk(id);
-
-      if (!rental) {
-        return res.status(404).json({ error: "Rental not found" });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      await rental.update(req.body);
+      const updatedRental = await rentalService.updateRental(id, rentalData);
 
-      // Obtener el rental actualizado con su relación
-      const updatedRental = await Rental.findByPk(id, {
-        include: [
-          { 
-            model: User, 
-            as: "user",
-            attributes: ["id", "name", "email", "phone"]
-          }
-        ]
-      });
+      if (!updatedRental) {
+        return res.status(404).json({ error: "Rental not found" });
+      }
 
       res.status(200).json(updatedRental);
     } catch (error: any) {
@@ -117,13 +78,15 @@ export class RentalController {
     try {
       const { id } = req.params;
 
-      const rental = await Rental.findByPk(id);
-
-      if (!rental) {
-        return res.status(404).json({ error: "Rental not found" });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      await rental.destroy();
+      const result = await rentalService.deleteRental(id);
+
+      if (!result) {
+        return res.status(404).json({ error: "Rental not found" });
+      }
 
       res.status(200).json({ message: "Rental deleted successfully" });
     } catch (error: any) {

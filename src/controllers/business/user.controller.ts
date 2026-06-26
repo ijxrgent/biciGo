@@ -1,27 +1,48 @@
 // src/controllers/business/user.controller.ts
 import { Request, Response } from "express";
-import { User, UserI } from "../../models/business/User.js";
+import { UserService } from "../../services/user.service.js";
+
+const userService = new UserService();
 
 export class UserController {
- //Get all users (solo activos)
- public async getAllUsers(req: Request, res: Response) {
+  // Get all users (solo activos)
+  public async getAllUsers(req: Request, res: Response) {
     try {
-      const users: UserI[] = await User.findAll({
-        where: { status: "active" },
-      });
+      const users = await userService.getAllUsers();
       res.status(200).json({ users });
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Error fetching users" });
     }
   }
-  
+
+  // Get all users (incluyendo inactivos - admin)
+  public async getAllUsersAdmin(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+
+      const users = await userService.getAllUsersAdmin();
+      res.status(200).json({ users });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error fetching users" });
+    }
+  }
+
   // Get user by ID
   public async getUserById(req: Request, res: Response) {
     try {
-      const { id: pk } = req.params;
-      const user = await User.findOne({
-        where: { id: pk, status: "active" },
-      });
+      const { id } = req.params;
+
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+      
+      const user = await userService.getUserById(id);
 
       if (user) {
         res.status(200).json(user);
@@ -29,72 +50,77 @@ export class UserController {
         res.status(404).json({ error: "User not found or inactive" });
       }
     } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error fetching user" });
+    }
+  }
+
+  // Get user by ID (admin - incluye inactivos)
+  public async getUserByIdAdmin(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+
+      const user = await userService.getUserByIdAdmin(id);
+
+      if (user) {
+        res.status(200).json(user);
+      } else {
+        res.status(404).json({ error: "User not found" });
+      }
+    } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Error fetching user" });
     }
   }
 
   // Create user
   public async createUser(req: Request, res: Response) {
-    const {
-      name,
-      phone,
-      email,
-      password,
-      role,
-      status,
-    } = req.body;
-
     try {
-      let body: UserI = {
+      const { name, phone, email, password, role, status } = req.body;
+
+      const userData = {
         name,
         phone,
         email,
         password,
         role,
-        status,
+        status: status || "active",
       };
 
-      const newUser = await User.create({ ...body });
+      const newUser = await userService.createUser(userData);
       res.status(201).json(newUser);
     } catch (error: any) {
+      console.error(error);
       res.status(400).json({ error: error.message });
     }
   }
 
   // Update user
   public async updateUser(req: Request, res: Response) {
-    const { id: pk } = req.params;
-
-    const {
-      name,
-      phone,
-      email,
-      password,
-      role,
-      status,
-    } = req.body;
-
     try {
-      let body: UserI = {
-        name,
-        phone,
-        email,
-        password,
-        role,
-        status,
-      };
+      const { id } = req.params;
 
-      const userExist = await User.findOne({
-        where: { id: pk, status: "active" },
-      });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
 
-      if (userExist) {
-        await userExist.update(body);
-        res.status(200).json(userExist);
+      const { name, phone, email, password, role, status } = req.body;
+
+      const userData = { name, phone, email, password, role, status };
+
+      const updatedUser = await userService.updateUser(id, userData);
+
+      if (updatedUser) {
+        res.status(200).json(updatedUser);
       } else {
         res.status(404).json({ error: "User not found or inactive" });
       }
     } catch (error: any) {
+      console.error(error);
       res.status(400).json({ error: error.message });
     }
   }
@@ -102,21 +128,21 @@ export class UserController {
   // Delete user (físico)
   public async deleteUser(req: Request, res: Response) {
     try {
-      const id = Number(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ error: "Invalid ID" });
-    }
-    
-      const userToDelete = await User.findByPk(id);
+      const { id } = req.params;
 
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
 
-      if (userToDelete) {
-        await userToDelete.destroy();
+      const result = await userService.deleteUser(id);
+
+      if (result) {
         res.status(200).json({ message: "User deleted successfully" });
       } else {
         res.status(404).json({ error: "User not found" });
       }
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Error deleting user" });
     }
   }
@@ -124,20 +150,44 @@ export class UserController {
   // Delete user lógico (status → inactive)
   public async deleteUserAdv(req: Request, res: Response) {
     try {
-      const { id: pk } = req.params;
+      const { id } = req.params;
 
-      const userToUpdate = await User.findOne({
-        where: { id: pk, status: "active" },
-      });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
 
-      if (userToUpdate) {
-        await userToUpdate.update({ status: "inactive" });
+      const result = await userService.deleteUserAdv(id);
+
+      if (result) {
         res.status(200).json({ message: "User marked as inactive" });
       } else {
-        res.status(404).json({ error: "User not found" });
+        res.status(404).json({ error: "User not found or already inactive" });
       }
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Error updating user status" });
+    }
+  }
+
+  // Reactivate user (status → active)
+  public async reactivateUser(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+
+      const result = await userService.reactivateUser(id);
+
+      if (result) {
+        res.status(200).json({ message: "User reactivated successfully" });
+      } else {
+        res.status(404).json({ error: "User not found or already active" });
+      }
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Error reactivating user" });
     }
   }
 }

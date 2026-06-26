@@ -9,11 +9,11 @@ const saleController = new SaleController();
 router.get("/", saleController.getAllSales);
 router.get("/admin", saleController.getAllSalesAdmin);
 router.get("/user/:userId", saleController.getSalesByUser);
-router.get("/status/:status", saleController.getSalesByStatus);
 router.get("/:id", saleController.getSaleById);
 
 // POST
 router.post("/", saleController.createSale);
+router.post("/status", saleController.getSalesByStatus); // Buscar por status
 
 // PUT
 router.put("/:id", saleController.updateSale);

@@ -16,11 +16,11 @@ router.post("/", penaltyTypeController.createPenaltyType);
 // PUT
 router.put("/:id", penaltyTypeController.updatePenaltyType);
 
-// DELETE
-router.delete("/:id", penaltyTypeController.deletePenaltyType);
-
 // PATCH - Cambios de estado
 router.patch("/:id/inactive", penaltyTypeController.deletePenaltyTypeAdv);
 router.patch("/:id/active", penaltyTypeController.reactivatePenaltyType);
+
+// DELETE (físico)
+router.delete("/:id", penaltyTypeController.deletePenaltyType);
 
 export default router;

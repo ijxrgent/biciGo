@@ -3,22 +3,25 @@ import { Router } from "express";
 import { RateController } from "../../controllers/business/rate.controller.js";
 
 const router = Router();
-const controller = new RateController();
+const rateController = new RateController();
 
 // GET
-router.get("/", controller.getAllRates);
-router.get("/:id", controller.getRateById);
+router.get("/", rateController.getAllRates);
+router.get("/admin", rateController.getAllRatesAdmin);
+router.get("/admin/:id", rateController.getRateByIdAdmin);
+router.get("/:id", rateController.getRateById);
 
 // POST
-router.post("/", controller.createRate);
+router.post("/", rateController.createRate);
 
 // PUT
-router.put("/:id", controller.updateRate);
+router.put("/:id", rateController.updateRate);
 
-// DELETE físico
-router.delete("/:id", controller.deleteRate);
+// PATCH - Cambios de estado
+router.patch("/:id/inactive", rateController.deleteRateAdv);
+router.patch("/:id/active", rateController.reactivateRate);
 
-// DELETE lógico
-router.patch("/:id", controller.deleteRateAdv);
+// DELETE (físico)
+router.delete("/:id", rateController.deleteRate);
 
 export default router;

@@ -1,30 +1,14 @@
 // src/controllers/business/penalty.controller.ts
 import { Request, Response } from "express";
-import { Penalty, PenaltyI } from "../../models/business/Penalty.js";
-import { Rental } from "../../models/business/Rental.js";
-import { PenaltyType } from "../../models/business/PenaltyType.js";
+import { PenaltyService } from "../../services/penalty.service.js";
+
+const penaltyService = new PenaltyService();
 
 export class PenaltyController {
   // GET ALL (solo pendientes)
   public async getAllPenalties(req: Request, res: Response) {
     try {
-      const penalties = await Penalty.findAll({
-        where: { status: "pending" },
-        include: [
-          {
-            model: Rental,
-            as: "rental",
-            attributes: ["id", "user_id", "pickup_datetime", "expected_return_datetime"]
-          },
-          {
-            model: PenaltyType,
-            as: "penaltyType",
-            attributes: ["id", "name", "penalty_mode"]
-          }
-        ],
-        order: [["penalty_date", "DESC"]]
-      });
-
+      const penalties = await penaltyService.getAllPenalties();
       res.status(200).json({ penalties });
     } catch (error) {
       console.error(error);
@@ -32,25 +16,10 @@ export class PenaltyController {
     }
   }
 
-  // GET ALL (incluyendo pagados y exonerados - admin)
+  // GET ALL (admin)
   public async getAllPenaltiesAdmin(req: Request, res: Response) {
     try {
-      const penalties = await Penalty.findAll({
-        include: [
-          {
-            model: Rental,
-            as: "rental",
-            attributes: ["id", "user_id", "pickup_datetime", "expected_return_datetime"]
-          },
-          {
-            model: PenaltyType,
-            as: "penaltyType",
-            attributes: ["id", "name", "penalty_mode"]
-          }
-        ],
-        order: [["status", "ASC"], ["penalty_date", "DESC"]]
-      });
-
+      const penalties = await penaltyService.getAllPenaltiesAdmin();
       res.status(200).json({ penalties });
     } catch (error) {
       console.error(error);
@@ -63,20 +32,11 @@ export class PenaltyController {
     try {
       const { id } = req.params;
 
-      const penalty = await Penalty.findByPk(id, {
-        include: [
-          {
-            model: Rental,
-            as: "rental",
-            attributes: ["id", "user_id", "pickup_datetime", "expected_return_datetime"]
-          },
-          {
-            model: PenaltyType,
-            as: "penaltyType",
-            attributes: ["id", "name", "penalty_mode"]
-          }
-        ]
-      });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+
+      const penalty = await penaltyService.getPenaltyById(id);
 
       if (penalty) {
         res.status(200).json(penalty);
@@ -94,18 +54,11 @@ export class PenaltyController {
     try {
       const { rentalId } = req.params;
 
-      const penalties = await Penalty.findAll({
-        where: { rental_id: rentalId },
-        include: [
-          {
-            model: PenaltyType,
-            as: "penaltyType",
-            attributes: ["id", "name", "penalty_mode"]
-          }
-        ],
-        order: [["penalty_date", "DESC"]]
-      });
+      if (!rentalId || typeof rentalId !== 'string') {
+        return res.status(400).json({ error: "Invalid rental ID format" });
+      }
 
+      const penalties = await penaltyService.getPenaltiesByRental(rentalId);
       res.status(200).json({ penalties });
     } catch (error) {
       console.error(error);
@@ -118,23 +71,11 @@ export class PenaltyController {
     try {
       const { penaltyTypeId } = req.params;
 
-      const penalties = await Penalty.findAll({
-        where: { penalty_type_id: penaltyTypeId },
-        include: [
-          {
-            model: Rental,
-            as: "rental",
-            attributes: ["id", "user_id", "pickup_datetime", "expected_return_datetime"]
-          },
-          {
-            model: PenaltyType,
-            as: "penaltyType",
-            attributes: ["id", "name", "penalty_mode"]
-          }
-        ],
-        order: [["penalty_date", "DESC"]]
-      });
+      if (!penaltyTypeId || typeof penaltyTypeId !== 'string') {
+        return res.status(400).json({ error: "Invalid penalty type ID format" });
+      }
 
+      const penalties = await penaltyService.getPenaltiesByPenaltyType(penaltyTypeId);
       res.status(200).json({ penalties });
     } catch (error) {
       console.error(error);
@@ -145,57 +86,9 @@ export class PenaltyController {
   // CREATE
   public async createPenalty(req: Request, res: Response) {
     try {
-      const {
-        rental_id,
-        penalty_type_id,
-        amount,
-        status,
-        penalty_date,
-        paid_date,
-        notes,
-      } = req.body;
-
-      // Validar que el rental existe
-      const rentalExists = await Rental.findByPk(rental_id);
-      if (!rentalExists) {
-        return res.status(400).json({ error: "Rental not found" });
-      }
-
-      // Validar que el penalty type existe
-      const penaltyTypeExists = await PenaltyType.findByPk(penalty_type_id);
-      if (!penaltyTypeExists) {
-        return res.status(400).json({ error: "Penalty type not found" });
-      }
-
-      let body: PenaltyI = {
-        rental_id,
-        penalty_type_id,
-        amount,
-        status: status || "pending",
-        penalty_date: penalty_date || new Date(),
-        paid_date,
-        notes,
-      };
-
-      const newPenalty = await Penalty.create({ ...body });
-
-      // Obtener la penalización creada con sus relaciones
-      const createdPenalty = await Penalty.findByPk(newPenalty.id, {
-        include: [
-          {
-            model: Rental,
-            as: "rental",
-            attributes: ["id", "user_id", "pickup_datetime", "expected_return_datetime"]
-          },
-          {
-            model: PenaltyType,
-            as: "penaltyType",
-            attributes: ["id", "name", "penalty_mode"]
-          }
-        ]
-      });
-
-      res.status(201).json(createdPenalty);
+      const penaltyData = req.body;
+      const newPenalty = await penaltyService.createPenalty(penaltyData);
+      res.status(201).json(newPenalty);
     } catch (error: any) {
       console.error(error);
       res.status(400).json({ error: error.message });
@@ -207,63 +100,16 @@ export class PenaltyController {
     try {
       const { id } = req.params;
 
-      const penalty = await Penalty.findByPk(id);
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
 
-      if (!penalty) {
+      const penaltyData = req.body;
+      const updatedPenalty = await penaltyService.updatePenalty(id, penaltyData);
+
+      if (!updatedPenalty) {
         return res.status(404).json({ error: "Penalty not found" });
       }
-
-      const {
-        rental_id,
-        penalty_type_id,
-        amount,
-        status,
-        penalty_date,
-        paid_date,
-        notes,
-      } = req.body;
-
-      // Si se actualiza el rental, validar que existe
-      if (rental_id && rental_id !== penalty.rental_id) {
-        const rentalExists = await Rental.findByPk(rental_id);
-        if (!rentalExists) {
-          return res.status(400).json({ error: "Rental not found" });
-        }
-      }
-
-      // Si se actualiza el penalty type, validar que existe
-      if (penalty_type_id && penalty_type_id !== penalty.penalty_type_id) {
-        const penaltyTypeExists = await PenaltyType.findByPk(penalty_type_id);
-        if (!penaltyTypeExists) {
-          return res.status(400).json({ error: "Penalty type not found" });
-        }
-      }
-
-      await penalty.update({
-        rental_id,
-        penalty_type_id,
-        amount,
-        status,
-        penalty_date,
-        paid_date,
-        notes,
-      });
-
-      // Obtener la penalización actualizada con sus relaciones
-      const updatedPenalty = await Penalty.findByPk(id, {
-        include: [
-          {
-            model: Rental,
-            as: "rental",
-            attributes: ["id", "user_id", "pickup_datetime", "expected_return_datetime"]
-          },
-          {
-            model: PenaltyType,
-            as: "penaltyType",
-            attributes: ["id", "name", "penalty_mode"]
-          }
-        ]
-      });
 
       res.status(200).json(updatedPenalty);
     } catch (error: any) {
@@ -277,25 +123,20 @@ export class PenaltyController {
     try {
       const { id } = req.params;
 
-      const penalty = await Penalty.findByPk(id);
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
 
-      if (!penalty) {
+      const result = await penaltyService.deletePenalty(id);
+
+      if (!result) {
         return res.status(404).json({ error: "Penalty not found" });
       }
 
-      // No permitir eliminar penalizaciones pagadas
-      if (penalty.status === "paid") {
-        return res.status(400).json({ 
-          error: "Cannot delete a paid penalty" 
-        });
-      }
-
-      await penalty.destroy();
-
       res.status(200).json({ message: "Penalty deleted successfully" });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      res.status(500).json({ error: "Error deleting penalty" });
+      res.status(400).json({ error: error.message });
     }
   }
 
@@ -305,35 +146,17 @@ export class PenaltyController {
       const { id } = req.params;
       const { paid_date } = req.body;
 
-      const penalty = await Penalty.findOne({
-        where: { id, status: "pending" }
-      });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
 
-      if (!penalty) {
+      const updatedPenalty = await penaltyService.payPenalty(id, paid_date);
+
+      if (!updatedPenalty) {
         return res.status(404).json({ 
           error: "Penalty not found or already paid/waived" 
         });
       }
-
-      await penalty.update({
-        status: "paid",
-        paid_date: paid_date || new Date()
-      });
-
-      const updatedPenalty = await Penalty.findByPk(id, {
-        include: [
-          {
-            model: Rental,
-            as: "rental",
-            attributes: ["id", "user_id", "pickup_datetime", "expected_return_datetime"]
-          },
-          {
-            model: PenaltyType,
-            as: "penaltyType",
-            attributes: ["id", "name", "penalty_mode"]
-          }
-        ]
-      });
 
       res.status(200).json({ 
         message: "Penalty paid successfully",
@@ -350,35 +173,17 @@ export class PenaltyController {
     try {
       const { id } = req.params;
 
-      const penalty = await Penalty.findOne({
-        where: { id, status: "pending" }
-      });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
 
-      if (!penalty) {
+      const updatedPenalty = await penaltyService.waivePenalty(id);
+
+      if (!updatedPenalty) {
         return res.status(404).json({ 
           error: "Penalty not found or already paid/waived" 
         });
       }
-
-      await penalty.update({
-        status: "waived",
-        paid_date: null // Asegurar que no tenga fecha de pago
-      });
-
-      const updatedPenalty = await Penalty.findByPk(id, {
-        include: [
-          {
-            model: Rental,
-            as: "rental",
-            attributes: ["id", "user_id", "pickup_datetime", "expected_return_datetime"]
-          },
-          {
-            model: PenaltyType,
-            as: "penaltyType",
-            attributes: ["id", "name", "penalty_mode"]
-          }
-        ]
-      });
 
       res.status(200).json({ 
         message: "Penalty waived successfully",

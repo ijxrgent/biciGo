@@ -1,30 +1,14 @@
- // src/controllers/business/bike.controller.ts
+// src/controllers/business/bike.controller.ts
 import { Request, Response } from "express";
-import { Bike, BikeI } from "../../models/business/Bike.js";
-import { Brand } from "../../models/business/Brand.js";
-import { BikeCategory } from "../../models/business/BikeCategory.js";
-import { Op } from "@sequelize/core";
+import { BikeService } from "../../services/bike.service.js";
+
+const bikeService = new BikeService();
 
 export class BikeController {
-  // Get all bikes (solo activas)
+  // Get all bikes (solo disponibles)
   public async getAllBikes(req: Request, res: Response) {
     try {
-      const bikes = await Bike.findAll({
-        where: { status: "available" },
-        include: [
-          {
-            model: Brand,
-            as: "brand",
-            attributes: ["id", "name"],
-          },
-          {
-            model: BikeCategory,
-            as: "category",
-            attributes: ["id", "name"],
-          },
-        ],
-        order: [["model", "ASC"]],
-      });
+      const bikes = await bikeService.getAllBikes();
       res.status(200).json({ bikes });
     } catch (error) {
       console.error("Error fetching bikes:", error);
@@ -32,24 +16,10 @@ export class BikeController {
     }
   }
 
-  // Get all bikes (incluyendo inactivas - para admin)
+  // Get all bikes (admin - incluye todas)
   public async getAllBikesAdmin(req: Request, res: Response) {
     try {
-      const bikes = await Bike.findAll({
-        include: [
-          {
-            model: Brand,
-            as: "brand",
-            attributes: ["id", "name"],
-          },
-          {
-            model: BikeCategory,
-            as: "category",
-            attributes: ["id", "name"],
-          },
-        ],
-        order: [["status", "ASC"], ["model", "ASC"]],
-      });
+      const bikes = await bikeService.getAllBikesAdmin();
       res.status(200).json({ bikes });
     } catch (error) {
       console.error("Error fetching all bikes:", error);
@@ -60,22 +30,13 @@ export class BikeController {
   // Get bike by ID
   public async getBikeById(req: Request, res: Response) {
     try {
-      const { id: pk } = req.params;
-      const bike = await Bike.findOne({
-        where: { id: pk, status: "available" },
-        include: [
-          {
-            model: Brand,
-            as: "brand",
-            attributes: ["id", "name"],
-          },
-          {
-            model: BikeCategory,
-            as: "category",
-            attributes: ["id", "name"],
-          },
-        ],
-      });
+      const { id } = req.params;
+
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+
+      const bike = await bikeService.getBikeById(id);
 
       if (bike) {
         res.status(200).json(bike);
@@ -90,42 +51,19 @@ export class BikeController {
 
   // Create bike
   public async createBike(req: Request, res: Response) {
-    const {
-      serial_number,
-      model,
-      imageURL,
-      description,
-      price,
-      status,
-      brand_id,
-      bike_category_id,
-    } = req.body;
-
     try {
-      // Verificar que el serial number no exista
-      const existingBike = await Bike.findOne({
-        where: { serial_number }
-      });
-      
-      if (existingBike) {
-        return res.status(400).json({ 
-          error: "A bike with this serial number already exists" 
-        });
-      }
+      const {
+        serial_number,
+        model,
+        imageURL,
+        description,
+        price,
+        status,
+        brand_id,
+        bike_category_id,
+      } = req.body;
 
-      // Verificar que la marca existe
-      const brandExists = await Brand.findByPk(brand_id);
-      if (!brandExists) {
-        return res.status(400).json({ error: "Brand not found" });
-      }
-
-      // Verificar que la categoría existe
-      const categoryExists = await BikeCategory.findByPk(bike_category_id);
-      if (!categoryExists) {
-        return res.status(400).json({ error: "Bike category not found" });
-      }
-
-      let body: BikeI = {
+      const bikeData = {
         serial_number,
         model,
         imageURL,
@@ -136,25 +74,8 @@ export class BikeController {
         bike_category_id,
       };
 
-      const newBike = await Bike.create({ ...body });
-      
-      // Obtener la bicicleta con sus relaciones
-      const createdBike = await Bike.findByPk(newBike.id, {
-        include: [
-          {
-            model: Brand,
-            as: "brand",
-            attributes: ["id", "name"],
-          },
-          {
-            model: BikeCategory,
-            as: "category",
-            attributes: ["id", "name"],
-          },
-        ],
-      });
-
-      res.status(201).json(createdBike);
+      const newBike = await bikeService.createBike(bikeData);
+      res.status(201).json(newBike);
     } catch (error: any) {
       console.error("Error creating bike:", error);
       res.status(400).json({ error: error.message });
@@ -163,60 +84,20 @@ export class BikeController {
 
   // Update bike
   public async updateBike(req: Request, res: Response) {
-    const { id: pk } = req.params;
-    const {
-      serial_number,
-      model,
-      imageURL,
-      description,
-      price,
-      status,
-      brand_id,
-      bike_category_id,
-    } = req.body;
-
     try {
-      const bikeExist = await Bike.findOne({
-        where: { id: pk, status: "available" },
-      });
+      const { id } = req.params;
+      const {
+        serial_number,
+        model,
+        imageURL,
+        description,
+        price,
+        status,
+        brand_id,
+        bike_category_id,
+      } = req.body;
 
-      if (!bikeExist) {
-        return res.status(404).json({ error: "Bike not found or unavailable" });
-      }
-
-      // Verificar que el serial number no esté en uso por otra bicicleta
-      if (serial_number) {
-        const existingBike = await Bike.findOne({
-          where: { 
-            serial_number,
-            id: { [Op.ne]: pk }
-          }
-        });
-        
-        if (existingBike) {
-          return res.status(400).json({ 
-            error: "A bike with this serial number already exists" 
-          });
-        }
-      }
-
-      // Verificar que la marca existe si se está actualizando
-      if (brand_id) {
-        const brandExists = await Brand.findByPk(brand_id);
-        if (!brandExists) {
-          return res.status(400).json({ error: "Brand not found" });
-        }
-      }
-
-      // Verificar que la categoría existe si se está actualizando
-      if (bike_category_id) {
-        const categoryExists = await BikeCategory.findByPk(bike_category_id);
-        if (!categoryExists) {
-          return res.status(400).json({ error: "Bike category not found" });
-        }
-      }
-
-      let body: Partial<BikeI> = {
+      const bikeData = {
         serial_number,
         model,
         imageURL,
@@ -227,25 +108,17 @@ export class BikeController {
         bike_category_id,
       };
 
-      await bikeExist.update(body);
-      
-      // Obtener la bicicleta actualizada con sus relaciones
-      const updatedBike = await Bike.findByPk(pk, {
-        include: [
-          {
-            model: Brand,
-            as: "brand",
-            attributes: ["id", "name"],
-          },
-          {
-            model: BikeCategory,
-            as: "category",
-            attributes: ["id", "name"],
-          },
-        ],
-      });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
 
-      res.status(200).json(updatedBike);
+      const updatedBike = await bikeService.updateBike(id, bikeData);
+
+      if (updatedBike) {
+        res.status(200).json(updatedBike);
+      } else {
+        res.status(404).json({ error: "Bike not found or unavailable" });
+      }
     } catch (error: any) {
       console.error("Error updating bike:", error);
       res.status(400).json({ error: error.message });
@@ -255,15 +128,15 @@ export class BikeController {
   // Delete bike (físico)
   public async deleteBike(req: Request, res: Response) {
     try {
-      const id = Number(req.params.id);
-      if (isNaN(id)) {
-        return res.status(400).json({ error: "Invalid ID" });
+      const { id } = req.params;
+
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
       }
 
-      const bikeToDelete = await Bike.findByPk(id);
+      const result = await bikeService.deleteBike(id);
 
-      if (bikeToDelete) {
-        await bikeToDelete.destroy();
+      if (result) {
         res.status(200).json({ message: "Bike deleted successfully" });
       } else {
         res.status(404).json({ error: "Bike not found" });
@@ -274,17 +147,18 @@ export class BikeController {
     }
   }
 
-  // Delete bike lógico (status → inactive)
+  // Set bike as unavailable
   public async setBikeUnavailable(req: Request, res: Response) {
     try {
-      const { id: pk } = req.params;
+      const { id } = req.params;
 
-      const bikeToUpdate = await Bike.findOne({
-        where: { id: pk, status: "available" },
-      });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
 
-      if (bikeToUpdate) {
-        await bikeToUpdate.update({ status: "unavailable" });
+      const result = await bikeService.setBikeUnavailable(id);
+
+      if (result) {
         res.status(200).json({ message: "Bike marked as unavailable" });
       } else {
         res.status(404).json({ error: "Bike not found or already unavailable" });
@@ -295,17 +169,18 @@ export class BikeController {
     }
   }
 
-  // Reactivate bike (status → active)
+  // Reactivate bike
   public async reactivateBike(req: Request, res: Response) {
     try {
-      const { id: pk } = req.params;
+      const { id } = req.params;
 
-      const bikeToUpdate = await Bike.findOne({
-        where: { id: pk, status: "unavailable" },
-      });
+      if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
 
-      if (bikeToUpdate) {
-        await bikeToUpdate.update({ status: "available" });
+      const result = await bikeService.reactivateBike(id);
+
+      if (result) {
         res.status(200).json({ message: "Bike reactivated successfully" });
       } else {
         res.status(404).json({ error: "Bike not found or already available" });
@@ -320,36 +195,20 @@ export class BikeController {
   public async getBikesByBrand(req: Request, res: Response) {
     try {
       const { brandId } = req.params;
-      
-      // Verificar que la marca existe
-      const brandExists = await Brand.findByPk(brandId);
-      if (!brandExists) {
+
+      if (!brandId || typeof brandId !== 'string') {
+        return res.status(400).json({ error: "Invalid brand ID format" });
+      }
+
+      const result = await bikeService.getBikesByBrand(brandId);
+
+      if (!result.brand) {
         return res.status(404).json({ error: "Brand not found" });
       }
 
-      const bikes = await Bike.findAll({
-        where: { 
-          brand_id: brandId, 
-          status: "available" 
-        },
-        include: [
-          {
-            model: Brand,
-            as: "brand",
-            attributes: ["id", "name"],
-          },
-          {
-            model: BikeCategory,
-            as: "category",
-            attributes: ["id", "name"],
-          },
-        ],
-        order: [["model", "ASC"]],
-      });
-      
       res.status(200).json({ 
-        brand: brandExists.name,
-        bikes 
+        brand: result.brand.name,
+        bikes: result.bikes 
       });
     } catch (error) {
       console.error("Error fetching bikes by brand:", error);
@@ -361,36 +220,20 @@ export class BikeController {
   public async getBikesByCategory(req: Request, res: Response) {
     try {
       const { categoryId } = req.params;
-      
-      // Verificar que la categoría existe
-      const categoryExists = await BikeCategory.findByPk(categoryId);
-      if (!categoryExists) {
+
+      if (!categoryId || typeof categoryId !== 'string') {
+        return res.status(400).json({ error: "Invalid category ID format" });
+      }
+
+      const result = await bikeService.getBikesByCategory(categoryId);
+
+      if (!result.category) {
         return res.status(404).json({ error: "Bike category not found" });
       }
 
-      const bikes = await Bike.findAll({
-        where: { 
-          bike_category_id: categoryId, 
-          status: "available" 
-        },
-        include: [
-          {
-            model: Brand,
-            as: "brand",
-            attributes: ["id", "name"],
-          },
-          {
-            model: BikeCategory,
-            as: "category",
-            attributes: ["id", "name"],
-          },
-        ],
-        order: [["model", "ASC"]],
-      });
-      
       res.status(200).json({ 
-        category: categoryExists.name,
-        bikes 
+        category: result.category.name,
+        bikes: result.bikes 
       });
     } catch (error) {
       console.error("Error fetching bikes by category:", error);
@@ -398,39 +241,16 @@ export class BikeController {
     }
   }
 
-  // Search bikes by model or serial number
+  // Search bikes
   public async searchBikes(req: Request, res: Response) {
     try {
       const { query } = req.query;
       
-      if (!query) {
+      if (!query || typeof query !== 'string') {
         return res.status(400).json({ error: "Search query is required" });
       }
 
-      const bikes = await Bike.findAll({
-        where: {
-          status: "available",
-          [Op.or]: [
-            { model: { [Op.like]: `%${query}%` } },
-            { serial_number: { [Op.like]: `%${query}%` } },
-            { description: { [Op.like]: `%${query}%` } }
-          ]
-        },
-        include: [
-          {
-            model: Brand,
-            as: "brand",
-            attributes: ["id", "name"],
-          },
-          {
-            model: BikeCategory,
-            as: "category",
-            attributes: ["id", "name"],
-          },
-        ],
-        order: [["model", "ASC"]],
-      });
-      
+      const bikes = await bikeService.searchBikes(query);
       res.status(200).json({ bikes });
     } catch (error) {
       console.error("Error searching bikes:", error);
@@ -449,33 +269,19 @@ export class BikeController {
         });
       }
 
-      const bikes = await Bike.findAll({
-        where: {
-          status: "available",
-          price: {
-            [Op.between]: [Number(minPrice), Number(maxPrice)]
-          }
-        },
-        include: [
-          {
-            model: Brand,
-            as: "brand",
-            attributes: ["id", "name"],
-          },
-          {
-            model: BikeCategory,
-            as: "category",
-            attributes: ["id", "name"],
-          },
-        ],
-        order: [["price", "ASC"]],
-      });
+      const min = Number(minPrice);
+      const max = Number(maxPrice);
+
+      if (isNaN(min) || isNaN(max)) {
+        return res.status(400).json({ 
+          error: "minPrice and maxPrice must be valid numbers" 
+        });
+      }
+
+      const bikes = await bikeService.getBikesByPriceRange(min, max);
       
       res.status(200).json({ 
-        range: {
-          min: Number(minPrice),
-          max: Number(maxPrice)
-        },
+        range: { min, max },
         bikes 
       });
     } catch (error) {

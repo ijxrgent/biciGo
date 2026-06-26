@@ -1,4 +1,4 @@
-// src/routes/Business/bike.routes.ts
+// src/routes/business/bike.routes.ts
 import { Router } from "express";
 import { BikeController } from "../../controllers/business/bike.controller.js";
 
@@ -20,11 +20,11 @@ router.post("/", bikeController.createBike);
 // PUT
 router.put("/:id", bikeController.updateBike);
 
-// DELETE
-router.delete("/:id", bikeController.deleteBike);
-
 // PATCH - Cambios de estado
-router.patch("/:id/inactive", bikeController.setBikeUnavailable);
-router.patch("/:id/active", bikeController.reactivateBike);
+router.patch("/:id/unavailable", bikeController.setBikeUnavailable);
+router.patch("/:id/available", bikeController.reactivateBike);
+
+// DELETE (físico)
+router.delete("/:id", bikeController.deleteBike);
 
 export default router;
