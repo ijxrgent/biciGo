@@ -1,11 +1,17 @@
 // src/services/sale.service.ts
+import { CreationAttributes } from "@sequelize/core";
 import { Sale, SaleI } from "../models/business/Sale.js";
 import { User } from "../models/business/User.js";
+import { BaseService } from "./base.service.js";
 
-export class SaleService {
+export class SaleService extends BaseService<Sale> {
+  constructor() {
+    super(Sale);
+  }
+
   // GET ALL (solo pending y paid)
   public async getAllSales(): Promise<Sale[]> {
-    return await Sale.findAll({
+    return await this.findAll({
       where: {
         status: ["pending", "paid"]
       },
@@ -22,7 +28,7 @@ export class SaleService {
 
   // GET ALL (admin)
   public async getAllSalesAdmin(): Promise<Sale[]> {
-    return await Sale.findAll({
+    return await this.findAll({
       include: [
         {
           model: User,
@@ -36,20 +42,12 @@ export class SaleService {
 
   // GET BY ID
   public async getSaleById(id: string | number): Promise<Sale | null> {
-    return await Sale.findByPk(id, {
-      include: [
-        {
-          model: User,
-          as: "user",
-          attributes: ["id", "name", "email", "phone"]
-        }
-      ]
-    });
+    return await this.findById(id);
   }
 
   // GET BY USER
   public async getSalesByUser(userId: string | number): Promise<Sale[]> {
-    return await Sale.findAll({
+    return await this.findAll({
       where: { user_id: userId },
       include: [
         {
@@ -69,7 +67,7 @@ export class SaleService {
       throw new Error(`Invalid status. Allowed values: ${validStatuses.join(', ')}`);
     }
 
-    return await Sale.findAll({
+    return await this.findAll({
       where: { status },
       include: [
         {
@@ -83,7 +81,7 @@ export class SaleService {
   }
 
   // CREATE
-  public async createSale(saleData: Partial<SaleI>): Promise<Sale> {
+  public async createSale(saleData: CreationAttributes<Sale>): Promise<Sale> {
     // Validar que el usuario existe
     if (saleData.user_id) {
       const userExists = await User.findByPk(saleData.user_id);
@@ -99,7 +97,7 @@ export class SaleService {
       total: saleData.total || 0,
     };
 
-    const newSale = await Sale.create({ ...data });
+    const newSale = await this.create(data);
 
     // Retornar la venta creada con su relación
     return await Sale.findByPk(newSale.id, {
@@ -149,23 +147,6 @@ export class SaleService {
         }
       ]
     }) as Sale;
-  }
-
-  // DELETE FÍSICO
-  public async deleteSale(id: string | number): Promise<boolean> {
-    const sale = await Sale.findByPk(id);
-
-    if (!sale) {
-      return false;
-    }
-
-    // No permitir eliminar ventas pagadas o entregadas
-    if (["paid", "delivered"].includes(sale.status)) {
-      throw new Error(`Cannot delete a ${sale.status} sale`);
-    }
-
-    await sale.destroy();
-    return true;
   }
 
   // CAMBIAR ESTADO

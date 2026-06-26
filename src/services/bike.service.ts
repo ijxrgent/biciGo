@@ -2,12 +2,17 @@
 import { Bike, BikeI } from "../models/business/Bike.js";
 import { Brand } from "../models/business/Brand.js";
 import { BikeCategory } from "../models/business/BikeCategory.js";
-import { Op } from "@sequelize/core";
+import { Op, CreationAttributes } from "@sequelize/core";
+import { BaseService } from "./base.service.js";
 
-export class BikeService {
+export class BikeService extends BaseService<Bike> {
+  constructor() {
+    super(Bike);
+  }
+
   // Get all bikes (solo disponibles)
   public async getAllBikes(): Promise<Bike[]> {
-    return await Bike.findAll({
+    return await this.findAll({
       where: { status: "available" },
       include: [
         {
@@ -27,7 +32,7 @@ export class BikeService {
 
   // Get all bikes (admin - incluye todas)
   public async getAllBikesAdmin(): Promise<Bike[]> {
-    return await Bike.findAll({
+    return await this.findAll({
       include: [
         {
           model: Brand,
@@ -46,7 +51,7 @@ export class BikeService {
 
   // Get bike by ID
   public async getBikeById(id: string | number): Promise<Bike | null> {
-    return await Bike.findOne({
+    return await this.findOne({
       where: { id, status: "available" },
       include: [
         {
@@ -63,8 +68,13 @@ export class BikeService {
     });
   }
 
+  // Get bike by ID (admin - incluye todas)
+  public async getBikeByIdAdmin(id: string | number): Promise<Bike | null> {
+    return await this.findById(id);
+  }
+
   // Create bike
-  public async createBike(bikeData: Partial<BikeI>): Promise<Bike> {
+  public async createBike(bikeData: CreationAttributes<Bike>): Promise<Bike> {
     // Verificar que el serial number no exista
     const existingBike = await Bike.findOne({
       where: { serial_number: bikeData.serial_number }
@@ -95,7 +105,7 @@ export class BikeService {
       status: bikeData.status || "available",
     };
 
-    const newBike = await Bike.create({ ...data });
+    const newBike = await this.create(data);
     
     // Retornar la bicicleta con relaciones
     return await Bike.findByPk(newBike.id, {
@@ -176,18 +186,6 @@ export class BikeService {
     }) as Bike;
   }
 
-  // Delete bike (físico)
-  public async deleteBike(id: string | number): Promise<boolean> {
-    const bikeToDelete = await Bike.findByPk(id);
-
-    if (!bikeToDelete) {
-      return false;
-    }
-
-    await bikeToDelete.destroy();
-    return true;
-  }
-
   // Set bike as unavailable
   public async setBikeUnavailable(id: string | number): Promise<boolean> {
     const bikeToUpdate = await Bike.findOne({
@@ -223,7 +221,7 @@ export class BikeService {
       return { brand: null, bikes: [] };
     }
 
-    const bikes = await Bike.findAll({
+    const bikes = await this.findAll({
       where: { 
         brand_id: brandId, 
         status: "available" 
@@ -253,7 +251,7 @@ export class BikeService {
       return { category: null, bikes: [] };
     }
 
-    const bikes = await Bike.findAll({
+    const bikes = await this.findAll({
       where: { 
         bike_category_id: categoryId, 
         status: "available" 
@@ -278,7 +276,7 @@ export class BikeService {
 
   // Search bikes
   public async searchBikes(query: string): Promise<Bike[]> {
-    return await Bike.findAll({
+    return await this.findAll({
       where: {
         status: "available",
         [Op.or]: [
@@ -305,7 +303,7 @@ export class BikeService {
 
   // Get bikes by price range
   public async getBikesByPriceRange(minPrice: number, maxPrice: number): Promise<Bike[]> {
-    return await Bike.findAll({
+    return await this.findAll({
       where: {
         status: "available",
         price: {
@@ -326,5 +324,29 @@ export class BikeService {
       ],
       order: [["price", "ASC"]],
     });
+  }
+
+  // Check if bike has active rentals
+  public async hasActiveRentals(id: string | number): Promise<boolean> {
+    const { Rental } = await import("../models/business/Rental.js");
+    const count = await Rental.count({
+      where: {
+        bike_id: id,
+        status: ["reserved", "active", "overdue"]
+      }
+    });
+    return count > 0;
+  }
+
+  // Check if bike has pending maintenance
+  public async hasPendingMaintenance(id: string | number): Promise<boolean> {
+    const { Maintenance } = await import("../models/business/Maintenance.js");
+    const count = await Maintenance.count({
+      where: {
+        bike_id: id,
+        status: ["scheduled", "in_progress"]
+      }
+    });
+    return count > 0;
   }
 }

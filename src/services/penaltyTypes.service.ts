@@ -1,30 +1,35 @@
 // src/services/penaltyType.service.ts
+import { Op, CreationAttributes } from "@sequelize/core";
 import { PenaltyType, PenaltyTypeI } from "../models/business/PenaltyType.js";
-import { Op } from "@sequelize/core";
+import { BaseService } from "./base.service.js";
 
-export class PenaltyTypeService {
+export class PenaltyTypeService extends BaseService<PenaltyType> {
+  constructor() {
+    super(PenaltyType);
+  }
+
   // GET ALL (solo activos)
-  public async getAllPenaltyTypes(): Promise<PenaltyTypeI[]> {
-    return await PenaltyType.findAll({
+  public async getAllPenaltyTypes(): Promise<PenaltyType[]> {
+    return await this.findAll({
       where: { status: "active" },
       order: [["name", "ASC"]]
     });
   }
 
   // GET ALL (incluyendo inactivos - admin)
-  public async getAllPenaltyTypesAdmin(): Promise<PenaltyTypeI[]> {
-    return await PenaltyType.findAll({
+  public async getAllPenaltyTypesAdmin(): Promise<PenaltyType[]> {
+    return await this.findAll({
       order: [["status", "DESC"], ["name", "ASC"]]
     });
   }
 
   // GET BY ID
-  public async getPenaltyTypeById(id: string | number): Promise<PenaltyTypeI | null> {
-    return await PenaltyType.findByPk(id);
+  public async getPenaltyTypeById(id: string | number): Promise<PenaltyType | null> {
+    return await this.findById(id);
   }
 
   // CREATE
-  public async createPenaltyType(penaltyTypeData: Partial<PenaltyTypeI>): Promise<PenaltyTypeI> {
+  public async createPenaltyType(penaltyTypeData: CreationAttributes<PenaltyType>): Promise<PenaltyType> {
     // Verificar si ya existe un tipo con ese nombre
     const existingType = await PenaltyType.findOne({
       where: { name: penaltyTypeData.name }
@@ -40,14 +45,14 @@ export class PenaltyTypeService {
       status: penaltyTypeData.status || "active",
     };
 
-    return await PenaltyType.create({ ...data });
+    return await this.create(data);
   }
 
   // UPDATE
   public async updatePenaltyType(
     id: string | number,
     penaltyTypeData: Partial<PenaltyTypeI>
-  ): Promise<PenaltyTypeI | null> {
+  ): Promise<PenaltyType | null> {
     const penaltyType = await PenaltyType.findByPk(id);
 
     if (!penaltyType) {
@@ -70,18 +75,6 @@ export class PenaltyTypeService {
 
     await penaltyType.update(penaltyTypeData);
     return penaltyType;
-  }
-
-  // DELETE FÍSICO
-  public async deletePenaltyType(id: string | number): Promise<boolean> {
-    const penaltyType = await PenaltyType.findByPk(id);
-
-    if (!penaltyType) {
-      return false;
-    }
-
-    await penaltyType.destroy();
-    return true;
   }
 
   // DELETE LÓGICO (status → inactive)

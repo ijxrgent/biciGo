@@ -1,45 +1,51 @@
 // src/services/rate.service.ts
+import { CreationAttributes } from "@sequelize/core";
 import { Rate, RateI } from "../models/business/Rate.js";
+import { BaseService } from "./base.service.js";
 
-export class RateService {
+export class RateService extends BaseService<Rate> {
+  constructor() {
+    super(Rate);
+  }
+
   // Get all rates (solo activos)
-  public async getAllRates(): Promise<RateI[]> {
-    return await Rate.findAll({
+  public async getAllRates(): Promise<Rate[]> {
+    return await this.findAll({
       where: { status: "active" },
     });
   }
 
   // Get all rates (admin - incluye inactivos)
-  public async getAllRatesAdmin(): Promise<RateI[]> {
-    return await Rate.findAll();
+  public async getAllRatesAdmin(): Promise<Rate[]> {
+    return await this.findAll();
   }
 
   // Get rate by ID
-  public async getRateById(id: string | number): Promise<RateI | null> {
-    return await Rate.findOne({
+  public async getRateById(id: string | number): Promise<Rate | null> {
+    return await this.findOne({
       where: { id, status: "active" },
     });
   }
 
   // Get rate by ID (admin - incluye inactivos)
-  public async getRateByIdAdmin(id: string | number): Promise<RateI | null> {
-    return await Rate.findByPk(id);
+  public async getRateByIdAdmin(id: string | number): Promise<Rate | null> {
+    return await this.findById(id);
   }
 
   // Create rate
-  public async createRate(rateData: Partial<RateI>): Promise<RateI> {
+  public async createRate(rateData: CreationAttributes<Rate>): Promise<Rate> {
     const data = {
       ...rateData,
       status: rateData.status || "active",
     };
-    return await Rate.create({ ...data });
+    return await this.create(data);
   }
 
   // Update rate
   public async updateRate(
     id: string | number,
     rateData: Partial<RateI>
-  ): Promise<RateI | null> {
+  ): Promise<Rate | null> {
     const rateExist = await Rate.findOne({
       where: { id, status: "active" },
     });
@@ -50,18 +56,6 @@ export class RateService {
 
     await rateExist.update(rateData);
     return rateExist;
-  }
-
-  // Delete rate (físico)
-  public async deleteRate(id: string | number): Promise<boolean> {
-    const rateToDelete = await Rate.findByPk(id);
-
-    if (!rateToDelete) {
-      return false;
-    }
-
-    await rateToDelete.destroy();
-    return true;
   }
 
   // Delete rate lógico (status → inactive)

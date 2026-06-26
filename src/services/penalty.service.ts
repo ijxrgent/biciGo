@@ -1,12 +1,18 @@
 // src/services/penalty.service.ts
+import { Op, CreationAttributes } from "@sequelize/core";
 import { Penalty, PenaltyI } from "../models/business/Penalty.js";
 import { Rental } from "../models/business/Rental.js";
 import { PenaltyType } from "../models/business/PenaltyType.js";
+import { BaseService } from "./base.service.js";
 
-export class PenaltyService {
+export class PenaltyService extends BaseService<Penalty> {
+  constructor() {
+    super(Penalty);
+  }
+
   // GET ALL (solo pendientes)
   public async getAllPenalties(): Promise<Penalty[]> {
-    return await Penalty.findAll({
+    return await this.findAll({
       where: { status: "pending" },
       include: [
         {
@@ -26,7 +32,7 @@ export class PenaltyService {
 
   // GET ALL (admin)
   public async getAllPenaltiesAdmin(): Promise<Penalty[]> {
-    return await Penalty.findAll({
+    return await this.findAll({
       include: [
         {
           model: Rental,
@@ -45,25 +51,12 @@ export class PenaltyService {
 
   // GET BY ID
   public async getPenaltyById(id: string | number): Promise<Penalty | null> {
-    return await Penalty.findByPk(id, {
-      include: [
-        {
-          model: Rental,
-          as: "rental",
-          attributes: ["id", "user_id", "pickup_datetime", "expected_return_datetime"]
-        },
-        {
-          model: PenaltyType,
-          as: "penaltyType",
-          attributes: ["id", "name", "penalty_mode"]
-        }
-      ]
-    });
+    return await this.findById(id);
   }
 
   // GET BY RENTAL
   public async getPenaltiesByRental(rentalId: string | number): Promise<Penalty[]> {
-    return await Penalty.findAll({
+    return await this.findAll({
       where: { rental_id: rentalId },
       include: [
         {
@@ -78,7 +71,7 @@ export class PenaltyService {
 
   // GET BY PENALTY TYPE
   public async getPenaltiesByPenaltyType(penaltyTypeId: string | number): Promise<Penalty[]> {
-    return await Penalty.findAll({
+    return await this.findAll({
       where: { penalty_type_id: penaltyTypeId },
       include: [
         {
@@ -97,7 +90,7 @@ export class PenaltyService {
   }
 
   // CREATE
-  public async createPenalty(penaltyData: Partial<PenaltyI>): Promise<Penalty> {
+  public async createPenalty(penaltyData: CreationAttributes<Penalty>): Promise<Penalty> {
     // Validar que el rental existe
     if (penaltyData.rental_id) {
       const rentalExists = await Rental.findByPk(penaltyData.rental_id);
@@ -120,7 +113,7 @@ export class PenaltyService {
       penalty_date: penaltyData.penalty_date || new Date(),
     };
 
-    const newPenalty = await Penalty.create({ ...data });
+    const newPenalty = await this.create(data);
 
     // Retornar la penalización creada con sus relaciones
     return await Penalty.findByPk(newPenalty.id, {
@@ -183,23 +176,6 @@ export class PenaltyService {
         }
       ]
     }) as Penalty;
-  }
-
-  // DELETE FÍSICO
-  public async deletePenalty(id: string | number): Promise<boolean> {
-    const penalty = await Penalty.findByPk(id);
-
-    if (!penalty) {
-      return false;
-    }
-
-    // No permitir eliminar penalizaciones pagadas
-    if (penalty.status === "paid") {
-      throw new Error("Cannot delete a paid penalty");
-    }
-
-    await penalty.destroy();
-    return true;
   }
 
   // PAGAR PENALIZACIÓN (status → paid)

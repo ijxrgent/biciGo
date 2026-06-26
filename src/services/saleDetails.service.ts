@@ -1,12 +1,18 @@
 // src/services/saleDetails.service.ts
+import { CreationAttributes } from "@sequelize/core";
 import { SaleDetails, SaleDetailsI } from "../models/business/SaleDetails.js";
 import { Sale } from "../models/business/Sale.js";
 import { Bike } from "../models/business/Bike.js";
+import { BaseService } from "./base.service.js";
 
-export class SaleDetailsService {
+export class SaleDetailsService extends BaseService<SaleDetails> {
+  constructor() {
+    super(SaleDetails);
+  }
+
   // GET ALL
   public async getAllSaleDetails(): Promise<SaleDetails[]> {
-    return await SaleDetails.findAll({
+    return await this.findAll({
       include: [
         {
           model: Sale,
@@ -25,25 +31,12 @@ export class SaleDetailsService {
 
   // GET BY ID
   public async getSaleDetailsById(id: string | number): Promise<SaleDetails | null> {
-    return await SaleDetails.findByPk(id, {
-      include: [
-        {
-          model: Sale,
-          as: "sale",
-          attributes: ["id", "user_id", "sale_date", "status", "total"]
-        },
-        {
-          model: Bike,
-          as: "bike",
-          attributes: ["id", "model", "serial_number", "brand_id"]
-        }
-      ]
-    });
+    return await this.findById(id);
   }
 
   // GET BY SALE
   public async getSaleDetailsBySale(saleId: string | number): Promise<SaleDetails[]> {
-    return await SaleDetails.findAll({
+    return await this.findAll({
       where: { sale_id: saleId },
       include: [
         {
@@ -58,7 +51,7 @@ export class SaleDetailsService {
 
   // GET BY BIKE
   public async getSaleDetailsByBike(bikeId: string | number): Promise<SaleDetails[]> {
-    return await SaleDetails.findAll({
+    return await this.findAll({
       where: { bike_id: bikeId },
       include: [
         {
@@ -72,7 +65,7 @@ export class SaleDetailsService {
   }
 
   // CREATE
-  public async createSaleDetails(detailData: Partial<SaleDetailsI>): Promise<SaleDetails> {
+  public async createSaleDetails(detailData: CreationAttributes<SaleDetails>): Promise<SaleDetails> {
     // Validar que la venta existe
     if (detailData.sale_id) {
       const saleExists = await Sale.findByPk(detailData.sale_id);
@@ -95,7 +88,7 @@ export class SaleDetailsService {
       data.subtotal = data.quantity * data.unit_price;
     }
 
-    const newDetail = await SaleDetails.create({ ...data });
+    const newDetail = await this.create(data);
 
     // Actualizar el total de la venta
     if (data.sale_id) {
@@ -180,23 +173,6 @@ export class SaleDetailsService {
         }
       ]
     }) as SaleDetails;
-  }
-
-  // DELETE
-  public async deleteSaleDetails(id: string | number): Promise<boolean> {
-    const saleDetail = await SaleDetails.findByPk(id);
-
-    if (!saleDetail) {
-      return false;
-    }
-
-    const saleId = saleDetail.sale_id;
-    await saleDetail.destroy();
-
-    // Actualizar el total de la venta después de eliminar
-    await this.updateSaleTotal(saleId);
-
-    return true;
   }
 
   // DELETE ALL BY SALE

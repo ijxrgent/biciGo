@@ -1,12 +1,18 @@
 // src/services/rentalDetails.service.ts
+import { CreationAttributes } from "@sequelize/core";
 import { RentalDetails, RentalDetailsI } from "../models/business/RentalDetails.js";
 import { Rental } from "../models/business/Rental.js";
 import { Bike } from "../models/business/Bike.js";
+import { BaseService } from "./base.service.js";
 
-export class RentalDetailsService {
+export class RentalDetailsService extends BaseService<RentalDetails> {
+  constructor() {
+    super(RentalDetails);
+  }
+
   // Get all rental details
   public async getAllRentalDetails(): Promise<RentalDetails[]> {
-    return await RentalDetails.findAll({
+    return await this.findAll({
       include: [
         { 
           model: Rental, 
@@ -22,23 +28,12 @@ export class RentalDetailsService {
 
   // Get rental detail by ID
   public async getRentalDetailsById(id: string | number): Promise<RentalDetails | null> {
-    return await RentalDetails.findByPk(id, {
-      include: [
-        { 
-          model: Rental, 
-          as: "rental"
-        },
-        { 
-          model: Bike, 
-          as: "bike"
-        }
-      ]
-    });
+    return await this.findById(id);
   }
 
   // Get rental details by rental ID
   public async getRentalDetailsByRental(rentalId: string | number): Promise<RentalDetails[]> {
-    return await RentalDetails.findAll({
+    return await this.findAll({
       where: { rental_id: rentalId },
       include: [
         { 
@@ -50,7 +45,7 @@ export class RentalDetailsService {
   }
 
   // Create rental detail
-  public async createRentalDetails(detailData: Partial<RentalDetailsI>): Promise<RentalDetails> {
+  public async createRentalDetails(detailData: CreationAttributes<RentalDetails>): Promise<RentalDetails> {
     // Validar que el rental existe
     if (detailData.rental_id) {
       const rentalExists = await Rental.findByPk(detailData.rental_id);
@@ -73,7 +68,7 @@ export class RentalDetailsService {
       data.subtotal = data.quantity * data.unit_price;
     }
 
-    const newDetail = await RentalDetails.create({ ...data });
+    const newDetail = await this.create(data);
     
     // Retornar el detalle creado con sus relaciones
     return await RentalDetails.findByPk(newDetail.id, {
@@ -142,18 +137,7 @@ export class RentalDetailsService {
     }) as RentalDetails;
   }
 
-  // Delete rental detail
-  public async deleteRentalDetails(id: string | number): Promise<boolean> {
-    const rentalDetail = await RentalDetails.findByPk(id);
-
-    if (!rentalDetail) {
-      return false;
-    }
-
-    await rentalDetail.destroy();
-    return true;
-  }
-
+  // Update rental total
   public async updateRentalTotal(rentalId: string | number): Promise<void> {
     const details = await RentalDetails.findAll({
       where: { rental_id: rentalId }
@@ -169,7 +153,7 @@ export class RentalDetailsService {
     );
   }
 
-  // ✅ DELETE con actualización automática del total
+  // DELETE con actualización automática del total
   public async deleteRentalDetailsAndUpdateTotal(id: string | number): Promise<boolean> {
     const rentalDetail = await RentalDetails.findByPk(id);
 

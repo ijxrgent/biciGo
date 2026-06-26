@@ -1,9 +1,14 @@
 // src/services/maintenance.service.ts
-import { Op } from "@sequelize/core";
+import { Op, CreationAttributes } from "@sequelize/core";
 import { Maintenance, MaintenanceI } from "../models/business/Maintenance.js";
 import { Bike } from "../models/business/Bike.js";
+import { BaseService } from "./base.service.js";
 
-export class MaintenanceService {
+export class MaintenanceService extends BaseService<Maintenance> {
+  constructor() {
+    super(Maintenance);
+  }
+
   // Validar transiciones de estado
   public validateStatusTransition(currentStatus: string, newStatus: string): boolean {
     const validTransitions: Record<string, string[]> = {
@@ -46,7 +51,7 @@ export class MaintenanceService {
 
   // Get all maintenances (solo activos)
   public async getAllMaintenances(): Promise<Maintenance[]> {
-    return await Maintenance.findAll({
+    return await this.findAll({
       where: {
         status: {
           [Op.in]: ["scheduled", "in_progress"]
@@ -65,7 +70,7 @@ export class MaintenanceService {
 
   // Get all maintenances (admin)
   public async getAllMaintenancesAdmin(): Promise<Maintenance[]> {
-    return await Maintenance.findAll({
+    return await this.findAll({
       include: [
         {
           model: Bike,
@@ -79,20 +84,12 @@ export class MaintenanceService {
 
   // Get by ID
   public async getMaintenanceById(id: string | number): Promise<Maintenance | null> {
-    return await Maintenance.findByPk(id, {
-      include: [
-        {
-          model: Bike,
-          as: "bike",
-          attributes: ["id", "model", "serial_number"]
-        }
-      ]
-    });
+    return await this.findById(id);
   }
 
   // Get by bike
   public async getMaintenancesByBike(bikeId: string | number): Promise<Maintenance[]> {
-    return await Maintenance.findAll({
+    return await this.findAll({
       where: { bike_id: bikeId },
       include: [
         {
@@ -106,7 +103,7 @@ export class MaintenanceService {
   }
 
   // Create
-  public async createMaintenance(maintenanceData: Partial<MaintenanceI>): Promise<Maintenance> {
+  public async createMaintenance(maintenanceData: CreationAttributes<Maintenance>): Promise<Maintenance> {
     // Validar que la bicicleta existe
     if (maintenanceData.bike_id) {
       const bikeExists = await Bike.findByPk(maintenanceData.bike_id);
@@ -125,7 +122,7 @@ export class MaintenanceService {
       status: maintenanceData.status || "scheduled",
     };
 
-    const newMaintenance = await Maintenance.create({ ...data });
+    const newMaintenance = await this.create(data);
 
     // Sincronizar estado de la bici
     if (data.status === "in_progress") {
@@ -192,28 +189,6 @@ export class MaintenanceService {
         }
       ]
     }) as Maintenance;
-  }
-
-  // Delete físico
-  public async deleteMaintenance(id: string | number): Promise<boolean> {
-    const maintenance = await Maintenance.findByPk(id);
-
-    if (!maintenance) {
-      return false;
-    }
-
-    // No permitir eliminar si está en progreso o completado
-    if (["in_progress", "completed"].includes(maintenance.status)) {
-      throw new Error(`Cannot delete a ${maintenance.status} maintenance`);
-    }
-
-    // Si estaba programado, sincronizar bici (liberar)
-    if (maintenance.status === "scheduled") {
-      await this.syncBikeStatus(maintenance, "cancelled");
-    }
-
-    await maintenance.destroy();
-    return true;
   }
 
   // Cambio de estado

@@ -1,47 +1,52 @@
 // src/services/bikeCategory.service.ts
 import { BikeCategory, BikeCategoryI } from "../models/business/BikeCategory.js";
 import { Bike } from "../models/business/Bike.js";
-import { Op } from "@sequelize/core";
+import { Op, CreationAttributes } from "@sequelize/core";
+import { BaseService } from "./base.service.js";
 
-export class BikeCategoryService {
+export class BikeCategoryService extends BaseService<BikeCategory> {
+  constructor() {
+    super(BikeCategory);
+  }
+
   // Get all categories (solo activas)
-  public async getAllCategories(): Promise<BikeCategoryI[]> {
-    return await BikeCategory.findAll({
+  public async getAllCategories(): Promise<BikeCategory[]> {
+    return await this.findAll({
       where: { status: "active" },
       order: [["name", "ASC"]],
     });
   }
 
   // Get all categories (incluyendo inactivas - admin)
-  public async getAllCategoriesAdmin(): Promise<BikeCategoryI[]> {
-    return await BikeCategory.findAll({
+  public async getAllCategoriesAdmin(): Promise<BikeCategory[]> {
+    return await this.findAll({
       order: [["status", "DESC"], ["name", "ASC"]],
     });
   }
 
   // Get category by ID
-  public async getCategoryById(id: string | number): Promise<BikeCategoryI | null> {
-    return await BikeCategory.findOne({
+  public async getCategoryById(id: string | number): Promise<BikeCategory | null> {
+    return await this.findOne({
       where: { id, status: "active" },
     });
   }
 
   // Get category by ID (incluyendo inactivas)
-  public async getCategoryByIdAdmin(id: string | number): Promise<BikeCategoryI | null> {
-    return await BikeCategory.findByPk(id);
+  public async getCategoryByIdAdmin(id: string | number): Promise<BikeCategory | null> {
+    return await this.findById(id);
   }
 
   // Get category by name
-  public async getCategoryByName(name: string): Promise<BikeCategoryI | null> {
+  public async getCategoryByName(name: string): Promise<BikeCategory | null> {
     return await BikeCategory.findOne({
       where: { name },
     });
   }
 
   // Create category
-  public async createCategory(categoryData: Partial<BikeCategoryI>): Promise<BikeCategoryI> {
+  public async createCategory(categoryData: CreationAttributes<BikeCategory>): Promise<BikeCategory> {
     // Verificar si ya existe una categoría con ese nombre
-    const existingCategory = await this.getCategoryByName(categoryData.name as string);
+    const existingCategory = await this.getCategoryByName(categoryData.name);
     if (existingCategory) {
       throw new Error("Category name already exists");
     }
@@ -51,14 +56,14 @@ export class BikeCategoryService {
       status: categoryData.status || "active",
     };
 
-    return await BikeCategory.create({ ...data });
+    return await this.create(data);
   }
 
   // Update category
   public async updateCategory(
     id: string | number,
     categoryData: Partial<BikeCategoryI>
-  ): Promise<BikeCategoryI | null> {
+  ): Promise<BikeCategory | null> {
     const categoryExist = await BikeCategory.findOne({
       where: { id, status: "active" },
     });
@@ -83,18 +88,6 @@ export class BikeCategoryService {
 
     await categoryExist.update(categoryData);
     return categoryExist;
-  }
-
-  // Delete category (físico)
-  public async deleteCategory(id: string | number): Promise<boolean> {
-    const categoryToDelete = await BikeCategory.findByPk(id);
-
-    if (!categoryToDelete) {
-      return false;
-    }
-
-    await categoryToDelete.destroy();
-    return true;
   }
 
   // Delete category lógico (status → inactive)
